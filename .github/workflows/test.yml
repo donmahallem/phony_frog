@@ -1,19 +1,93 @@
-name: Node.js CI
-
-on: [push, pull_request]
-strategy:
-  matrix:
-    node-version: ["23"]
+name: Test
+on:
+  push:
+  pull_request:
+concurrency:
+  group: ${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  build:
-    runs-on: ubuntu-latest
-
+  build_suite:
+    runs-on: ${{ matrix.os }}
+    name: Build - ${{ matrix.os }} - Node ${{ matrix.node }}
+    timeout-minutes: 30
+    strategy:
+      max-parallel: 4
+      matrix:
+        node: [23]
+        os: [ubuntu-latest] #, windows-latest]
     steps:
-      - uses: actions/checkout@v4
-      - name: Use Node.js
-        uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          node-version: ${{ matrix.node-version }}
-      - run: npm ci
-      - run: npm run build --if-present
-      - run: npm test
+          fetch-depth: 200
+      - name: Setup Node
+        uses: actions/setup-node@v4.1.0
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Update NPM
+        run: |
+          npm install -g npm
+          npm -v
+      - name: Get npm cache directory
+        id: npm-cache
+        run: |
+          echo "::set-output name=dir::$(npm config get cache)"
+      - name: Setup Cache
+        uses: actions/cache@v4.1.2
+        with:
+          path: |
+            ${{ steps.npm-cache.outputs.dir }}
+            node_modules
+            */*/node_modules
+          key: ${{ runner.os }}-node${{ matrix.node }}-npm-${{ hashFiles('**/package-lock.json') }}
+      - name: Install Deps
+        run: |
+          npm ci
+      - name: Run Build
+        run: npm run build
+  test_suite:
+    needs: build_suite
+    runs-on: ${{ matrix.os }}
+    name: Test - ${{ matrix.os }} - Node ${{ matrix.node }}
+    timeout-minutes: 30
+    strategy:
+      max-parallel: 4
+      matrix:
+        node: [23]
+        os: [ubuntu-latest] #, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 200
+      - name: Setup Node
+        uses: actions/setup-node@v4.1.0
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Update NPM
+        run: |
+          npm install -g npm
+          npm -v
+      - name: Get npm cache directory
+        id: npm-cache
+        run: |
+          echo "::set-output name=dir::$(npm config get cache)"
+      - name: Setup Cache
+        uses: actions/cache@v4.1.2
+        with:
+          path: |
+            ${{ steps.npm-cache.outputs.dir }}
+            node_modules
+          key: ${{ runner.os }}-node${{ matrix.node }}-npm-${{ hashFiles('**/package-lock.json') }}
+      - name: Install Deps
+        run: |
+          npm ci
+      - name: Run Test
+        run: npm run test
+  finish:
+    needs: [test_suite]
+    name: Finish Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Coveralls Finished
+        run: echo "Test Finished"
