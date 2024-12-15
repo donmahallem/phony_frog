@@ -1,0 +1,11 @@
+{
+  "baseBranches": ["master"],
+  "extends": ["github>donmahallem/renovate-config"],
+  "packageRules": [
+    {
+      "groupName": "axios/turbo update {{currentVersion}}",
+      "matchPackagePatterns": ["^axios$", "^@donmahallem/turbo"],
+      "matchUpdateTypes": ["major"]
+    }
+  ]
+}
