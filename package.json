@@ -6,7 +6,7 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test",
+    "test": "ng test --watch=false --browsers=ChromeHeadless",
     "serve:ssr:phony_frog": "node dist/phony_frog/server/server.mjs"
   },
   "private": true,
